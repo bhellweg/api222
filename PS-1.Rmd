@@ -68,7 +68,7 @@ sum(is.na(schools))
 ```
 
 ### Problem 4
-district, municipality
+The categorical variables are `district` and `municipality`.
 
 ### Problem 5
 ```{r prob5, echo=T}
