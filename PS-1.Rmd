@@ -2,7 +2,7 @@
 title: "Problem Set 1"
 subtitle: "API222: Big Data & Machine Learning"
 author: "Brendan Hellweg"
-date: "9/18/2021"
+date: "9/29/2021"
 output: pdf_document
 ---
 
@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(AER)
 library(tidyverse)
 library(class)
+library(Hmisc)
 ```
 
 ## Problem 1
@@ -36,10 +37,10 @@ True. Low flexibility models will have higher bias in these cases.
 False. The inflexible model will fit the data best.
 
 #### Problem 2D
-False. A model is parametric if f() can be finitely modeled, not if it has a decision rule. KNN models have decision rules.
+False. A model is parametric if f() can be finitely modeled, not if it has a decision rule. KNN models have decision rules but cannot necessarily be finitelty modeled.
 
 ## Problem 3
-As flexibility increases, bias also increases due to overfitting, while variance decreases with the reduced MSE_TR. As flexibility decreases, bias also decreases because there is less overfitting, but variance will increase with the increased MSE_TR. As such, there is an inverse relationship between bias and variance, and the best models will optimize for the "sweet spot" in the middle that minimizes MSE_TE. 
+As flexibility increases, variance generally increases due to overfitting (meaning that the model is overly influenced by sampling error in the training set), while bias decreases because the model is better able to reflect the pattern of the training data (and therefore minimize MSE_TR). As flexibility decreases, variance also decreases because there is less overfitting, but bias will increase because the model is less able to represent patterns in the training data. As such, there is an inverse relationship between bias and variance, and the best models will optimize for the "sweet spot" in the middle that minimizes MSE_TE. 
 
 \newpage
 
@@ -96,7 +97,6 @@ schools_tr <- schools2 %>%
 schools_te <- schools2 %>% 
   tail(.,n = 35)
 
-set.seed(27)
 ```
 
 ### Problem 7
@@ -109,26 +109,29 @@ mean((schools_te$score8 - predict.lm(school_lm, schools_te)) ^ 2) %>%
 
 ### Problem 8
 ```{r prob8, echo=T}
-school_lm2 <- lm(score8~stratio+lunch+expreg,schools_tr)
+school_lm2 <- lm(score8~stratio+lunch+exptot,schools_tr)
 
 mean((schools_te$score8 - predict.lm(school_lm2, schools_te)) ^ 2) %>% 
   round(.,2)
 ```
+Below is the analysis for parts 2-5 of this question.
 
 ```{r prob8a, echo=T}
 print(school_lm)
 print(school_lm2)
+cor(schools2$stratio,schools2$score8)
 ```
+The coefficient with the largest change in effect is `stratio`, which in the first model is associated with a moderate decline in 8th grade test performance, while in the second model it is associated with a moderate improvement in 8th grade test performance. In comparison, an increase in `lunch` continues to be associated with a decline in `score8`, though the coefficient roughly doubles in magnitude. The smallest coefficient change is for `exptot`, which changes from slightly negative to slightly positive.
 
-The coefficient with the largest change in effect is `stratio`, which in the first model is associated with a moderate decline in 8th grade test performance, while in the second model it is associated with a moderate improvement in 8th grade test performance. In comparison, an increase in `lunch` continues to be associated with a decline in `score8`, though the coefficient roughly doubles in magnitude. The smallest coefficient change is for `expreg`, which changes from slightly negative to slightly positive.
+In the first model, `stratio` has a coefficient of `-0.54`, while in the second model its coefficient is `0.41`. This gap results in a difference of `0.95` between the first and second model. The correlation between `stratio` and `score8` in the full dataset is `-0.34`, so it appears that the first model is directionally accurate.
 
-In the first model, `stratio` has a coefficient of `-0.54`, while in the second model its coefficient is `0.49`.
+One reason this change would occur is interaction effects and collinearities that skew the three-variable model. For instance, `stratio` is inversely correlated with `income` and `score4`, both of which are positively correlated with `score8`. It is positively correlated with `english`, which is also positively correlated with `score8`. As a result of their omission in the second model, these variables and their interaction effects will influence the relationships described in `school_lm2`. 
 
-One reason this change might occur is interaction effects missing from the all-variables linear model. When a model contains too many variables and insufficient flexibility, its bias may produce models with a high degree of error. Second, the many-variable model will have less interpretability, so these associations are harder to discuss.
+One way to think about this result is that, if you hold the total expense and subsidized lunch populations of a school relatively constant, the larger classrooms tend to do better for reasons outside the scope of this analysis. Perhaps those larger classrooms tend to be populated by students who speak English more comfortably, making it easier to score on a test in English. Any definitive claim will take much more rigorous analysis.
 
 ### Problem 9
 ```{r prob9, echo=T}
-set.seed(27)
+
 pr <- knn(schools_tr,schools_te,schools_tr$score8,k = 2)
 tb <- as.data.frame(pr) %>% 
   mutate(pr = as.numeric(as.character(pr))) %>% 
@@ -138,10 +141,11 @@ tb <- as.data.frame(pr) %>%
 mean(as.numeric(as.character(tb$sqerror))) %>% 
   round(.,2)
 ```
+Note: This value has a random element due to the process of generating MSE_TE of a KNN model. Over several instances running this code block, I found values ranging from approx. `450` and `650`.
 
 ### Problem 10
 ```{r prob10, echo=T}
-set.seed(27)
+
 pr <- knn(schools_tr,schools_te,schools_tr$score8,k = 10)
 tb <- as.data.frame(pr) %>% 
   mutate(pr = as.numeric(as.character(pr))) %>% 
@@ -151,3 +155,4 @@ tb <- as.data.frame(pr) %>%
 mean(as.numeric(as.character(tb$sqerror))) %>% 
   round(.,2)
 ```
+Note: This value has a random element due to the process of generating MSE_TE of a KNN model. Over several instances running this code block, I found values ranging from approx. `350` and `550`.
