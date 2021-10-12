@@ -123,7 +123,8 @@ seatbelts3 <- seatbelts2 %>%
                                   'drinkage',
                                   'alcohol',
                                   'enforce')) %>% 
-  select(-c(4:7,10))
+  select(-c(4:7,10)) %>% 
+  select(c(2,1,3:16))
 
 seatbelt_lm <- lm(fatalities~.,seatbelts3)
 summary(seatbelt_lm)
@@ -135,7 +136,13 @@ str_c("Adjusted R^2: ",round(100*seatbelt_lm[["residuals"]][["98"]],2))
 For the next section, I will filter the dataset to remove rows with NA values and create treatment and test bins.
 
 ```{r regsetup, echo=T}
+set.seed(222) 
 
+fit <- glmnet(seatbelts3[2:16],seatbelts3$fatalities)
+plot(fit)
+
+cvfit <- cv.glmnet(data.matrix(seatbelts3[2:16]),data.matrix(seatbelts3[1]))
+plot(cvfit)
 ```
 
 ### Problem 7
