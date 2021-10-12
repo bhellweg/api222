@@ -1,0 +1,162 @@
+---
+title: "Problem Set 2"
+subtitle: "API222: Big Data & Machine Learning"
+author: "Brendan Hellweg"
+date: "10/14/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(AER)
+library(tidyverse)
+library(glmnet)
+library(fastDummies)
+library(knitr)
+```
+
+## Problem 1
+
+1	LDA and Logistic regression both have linear decision boundaries and will perform similarly poorly when applied to nonlinear decision boundaries. QDA and KNN both have nonlinear decision boundaries. Depending on the type of nonlinearity of the Bayes Decision Boundary, either QDA or KNN May perform better. KNN will perform better if the assumption of normalcy does not hold, while QDA performs better when the assumption of normalcy holds. 
+
+## Problem 2
+
+#### Problem 2A
+See the table below.
+```{r prob2a,echo=F}
+x1<-c(0,0,0,1,1,-1,0)
+x2<-c(3,2,4,3,5,4,4)
+x3<-c(2,3,1,1,0,2,2)
+Y <-c('Blue','Blue','Orange','Green','Orange','Orange','Orange')
+prob2<-as.data.frame(cbind(X1 = as.numeric(x1),
+                           X2 = as.numeric(x2),
+                           X3 = as.numeric(x3),Y)) %>% 
+  mutate(distance = round(sqrt(x1^2+x2^2+x3^2),2))
+prob2
+```
+
+#### Problem 2B
+The prediction with `K = 1` is `Green`. The decision criteria for KNN is to select the `K` data points closest to the test point and assign a value based on the observed value. In this case, the one nearest neighbor (where the Euclidian distance is minimized) has property `Y = Green`.
+
+#### Problem 2C
+The prediction with `K = 3` is `Blue`. For the three nearest neighbors (where the Euclidian distance is minimized), two have the property `Y = Blue` and one has property `Y = Green`. Different KNN tests will have different decision criteria for inconsistent values, but typically the value with the most or majority observations in the set is what's selected.
+
+#### Problem 2D
+If the Bayes decision boundary is highly nonlinear, we'd want a small `K` so we can be sensitive to nonlinearities.
+
+## Problem 3
+When $\lambda$ = 0, the Lasso model becomes equivalent to the residual sum of squares, therefore becoming identical to the OLS model. When $\lambda$ approaches infinity, all coefficients approach zero and the model becomes a constant function.
+
+## Problem 4
+While Lasso uses ||$\beta$||1 with the sums of absolute values of $\beta$j, Ridge uses ||$\beta$||2 with the sums of squares of $\beta$j. Using ||$\beta$||1 forces some of the coefficient estimates to reach exactly zero, meaning that Lasso produces a sparce and therefore more interpretable model. Ridge, on the other hand, produces a dense and therefore harder to interpret model.
+
+If all I care about is the predictive ability and I don't care at all about the level of interpretability, I would use Cross Validation to compare the two potential models (after also using it to identify the optimal values of $\lambda$ to design each model). Cross Validation works by estimating the test error rate by holding aside subsets of the training observations in the fitting process and then applying the model to those saved subsets. The metric to compare is the test MSE.
+
+## Problem 5
+We cannot draw this conclusion, as we do not know where along the ROC curve we want to minimize the number of false positives. Model A could start steeper and level off sooner than Model B, meaning that for early parts of the ROC curve it outperforms Model B. Conversely, Model B could dominate throughout the ROC curve. Therefore, we cannot make a conclusion from the information provided.
+
+
+\newpage
+
+## Data Questions
+
+```{r make_table,include=F}
+prostate <- read.table('http://statweb.stanford.edu/~tibs/ElemStatLearn/datasets/prostate.data')
+data("USSeatBelts")
+seatbelts <- as.data.frame((USSeatBelts))
+```
+
+### Problem 1
+```{r prob1, echo=T}
+c("The dimensions are: ",
+  nrow(prostate), " by ", ncol(prostate),".",
+  " The final column represents whether the entry belongs in the test or the treatment set.") %>% 
+str_c(.,collapse = '')
+```
+
+### Problem 2
+```{r prob2, echo=T}
+pairs(cor(prostate[1:9]), col = "purple")
+pairs((prostate[1:9]), col = "purple", row1attop = T)
+```
+
+The Gleason variable has a small number of possible values in this dataset, so the results will be constrained to a small number of bands, which are vertical because the other variable has a strong degree of variation along a given value of gleason.
+
+### Problem 3
+```{r prob3, echo=T}
+seatbelts2 <- drop_na(USSeatBelts)
+
+nrow(seatbelts)-nrow(seatbelts2)
+```
+
+### Problem 4
+```{r prob4, echo=F}
+cats <- seatbelts2 %>% 
+  select(where(is.factor))
+
+names(cats)
+
+str_c(names(cats[1]),": ",nrow(distinct(cats[1])),collapse = '')
+str_c(names(cats[2]),": ",nrow(distinct(cats[2])),collapse = '')
+str_c(names(cats[3]),": ",nrow(distinct(cats[3])),collapse = '')
+str_c(names(cats[4]),": ",nrow(distinct(cats[4])),collapse = '')
+str_c(names(cats[5]),": ",nrow(distinct(cats[5])),collapse = '')
+str_c(names(cats[6]),": ",nrow(distinct(cats[6])),collapse = '')
+str_c(names(cats[7]),": ",nrow(distinct(cats[7])),collapse = '')
+```
+
+### Problem 5
+```{r prob5, echo=T}
+seatbelts2 %>% 
+  slice_max(.,order_by = .$fatalities,n = 1)
+
+seatbelts2 %>% 
+  slice_min(.,order_by = .$fatalities,n = 1)
+```
+
+### Problem 6
+```{r prob6, echo=T}
+seatbelts3 <- seatbelts2 %>% 
+  select(-c(1:2)) %>% 
+  dummy_cols(.,select_columns = c('speed65',
+                                  'speed70',
+                                  'drinkage',
+                                  'alcohol',
+                                  'enforce')) %>% 
+  select(-c(4:7,10))
+
+seatbelt_lm <- lm(fatalities~.,seatbelts3)
+summary(seatbelt_lm)
+
+str_c("Adjusted R^2: ",round(100*seatbelt_lm[["residuals"]][["98"]],2))
+```
+
+### Setup for Regression & KNN Section
+For the next section, I will filter the dataset to remove rows with NA values and create treatment and test bins.
+
+```{r regsetup, echo=T}
+
+```
+
+### Problem 7
+```{r prob7, echo=T}
+
+```
+
+### Problem 8
+```{r prob8, echo=T}
+
+```
+
+
+
+```{r prob8a, echo=T}
+
+```
+
+
+### Problem 9
+```{r prob9, echo=T}
+
+```
+Note: This value has a random element due to the process of generating MSE_TE of a KNN model. Over several instances running this code block, I found values ranging from approx. `450` and `650`.
