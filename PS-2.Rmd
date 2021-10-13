@@ -184,5 +184,7 @@ Mean squared error is minimized at `k = 4`.
 ### Problem 9
 ```{r prob9, echo=T}
 plot(x = kfold$k,y = kfold$mean,
+     main = "KNN MSE for US Seatbelt Data",
+     sub = "Produced for API-222",
      xlab = 'k',ylab = "Mean CV MSE") 
 ```
