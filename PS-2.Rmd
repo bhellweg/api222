@@ -13,6 +13,7 @@ library(tidyverse)
 library(glmnet)
 library(fastDummies)
 library(knitr)
+library(FNN)
 ```
 
 ## Problem 1
@@ -68,15 +69,15 @@ seatbelts <- as.data.frame((USSeatBelts))
 
 ### Problem 1
 ```{r prob1, echo=T}
-c("The dimensions are: ",
-  nrow(prostate), " by ", ncol(prostate),".",
-  " The final column represents whether the entry belongs in the test or the treatment set.") %>% 
+c("The dimensions are ",
+  nrow(prostate), " by ", ncol(prostate),".") %>% 
 str_c(.,collapse = '')
 ```
+The final column represents whether the entry belongs in the test or the treatment set.
 
 ### Problem 2
 ```{r prob2, echo=T}
-pairs(cor(prostate[1:9]), col = "purple")
+round(cor(prostate[1:9]),2)
 pairs((prostate[1:9]), col = "purple", row1attop = T)
 ```
 
@@ -96,28 +97,29 @@ cats <- seatbelts2 %>%
 
 names(cats)
 
-str_c(names(cats[1]),": ",nrow(distinct(cats[1])),collapse = '')
-str_c(names(cats[2]),": ",nrow(distinct(cats[2])),collapse = '')
-str_c(names(cats[3]),": ",nrow(distinct(cats[3])),collapse = '')
-str_c(names(cats[4]),": ",nrow(distinct(cats[4])),collapse = '')
-str_c(names(cats[5]),": ",nrow(distinct(cats[5])),collapse = '')
-str_c(names(cats[6]),": ",nrow(distinct(cats[6])),collapse = '')
-str_c(names(cats[7]),": ",nrow(distinct(cats[7])),collapse = '')
+for( i in c(1:7)){
+  print(str_c(names(cats[i]),": ",nrow(distinct(cats[i])),collapse = ''))
+}
+
 ```
 
 ### Problem 5
 ```{r prob5, echo=T}
 seatbelts2 %>% 
-  slice_max(.,order_by = .$fatalities,n = 1)
+  group_by(state) %>% 
+  summarise(mean_fatalities = mean(fatalities)) %>% 
+  slice_max(.,order_by = mean_fatalities,n = 1)
 
 seatbelts2 %>% 
-  slice_min(.,order_by = .$fatalities,n = 1)
+  group_by(state) %>% 
+  summarise(mean_fatalities = mean(fatalities)) %>% 
+  slice_min(.,order_by = mean_fatalities,n = 1)
 ```
 
 ### Problem 6
 ```{r prob6, echo=T}
 seatbelts3 <- seatbelts2 %>% 
-  select(-c(1:2)) %>% 
+  select(-c(1:2)) %>%
   dummy_cols(.,select_columns = c('speed65',
                                   'speed70',
                                   'drinkage',
@@ -132,10 +134,8 @@ summary(seatbelt_lm)
 str_c("Adjusted R^2: ",round(100*seatbelt_lm[["residuals"]][["98"]],2))
 ```
 
-### Setup for Regression & KNN Section
-For the next section, I will filter the dataset to remove rows with NA values and create treatment and test bins.
-
-```{r regsetup, echo=T}
+### Problem 7
+```{r prob7, echo=T}
 set.seed(222) 
 
 fit <- glmnet(seatbelts3[2:16],seatbelts3$fatalities)
@@ -143,27 +143,46 @@ plot(fit)
 
 cvfit <- cv.glmnet(data.matrix(seatbelts3[2:16]),data.matrix(seatbelts3[1]))
 plot(cvfit)
-```
 
-### Problem 7
-```{r prob7, echo=T}
+```
+```{r prob7a, echo=F}
+set.seed(222) 
+
+str_c("Lamda with lowest mean cross-validation error: ",signif(cvfit$lambda.min,digits = 3))
+str_c("Cross-validation error: ",signif(cvfit$cvm[42],digits = 3))
+str_c("Standard error for this Lamda value: ",signif(cvfit$cvsd[42],digits = 3))
+str_c("Largest lamda value within 1se: ",signif(cvfit$lambda.1se,digits = 3))
 
 ```
 
 ### Problem 8
 ```{r prob8, echo=T}
-
+#Randomize the data
+seatbelts3<-seatbelts3[sample(nrow(seatbelts3)),]
+#Create 5 equally size folds
+folds <- cut(seq(1,nrow(seatbelts3)),breaks=5,labels=FALSE)
+dataframe <- as.data.frame(c(1:100))
+#Perform 5 fold cross validation
+for(i in 1:5){
+    testIndexes <- which(folds==i,arr.ind=TRUE)
+    testData <- seatbelts3[testIndexes, ]
+    trainData <- seatbelts3[-testIndexes, ]
+    columnframe = as.data.frame(c())
+for(k in 1:100){
+#Perform KNN for every value of 0<k<101
+    pr <- knn.reg(test = testData,train = trainData,k = k,y = trainData$fatalities)
+    tb <- as.data.frame(pr$pred) %>% 
+    mutate(pr = pr$pred, scores = testData$fatalities) %>% mutate(sqerror = (.$pr-.$scores)^2) 
+    columnframe <- rbind(columnframe, mean(as.numeric(as.character(tb$sqerror))))}
+    dataframe <- cbind(dataframe, (columnframe))}
+kfold <- as.data.frame(dataframe) %>%
+   mutate(mean = rowMeans(.[2:5]),k=.$`c(1:100)`) %>% select(-c(1:6))
+slice_min(kfold,order_by = mean,n = 1)
 ```
-
-
-
-```{r prob8a, echo=T}
-
-```
-
+Mean squared error is minimized at `k = 4`.
 
 ### Problem 9
 ```{r prob9, echo=T}
-
+plot(x = kfold$k,y = kfold$mean,
+     xlab = 'k',ylab = "Mean CV MSE") 
 ```
-Note: This value has a random element due to the process of generating MSE_TE of a KNN model. Over several instances running this code block, I found values ranging from approx. `450` and `650`.
