@@ -53,6 +53,8 @@ While Lasso uses ||$\beta$||1 with the sums of absolute values of $\beta$j, Ridg
 
 If all I care about is the predictive ability and I don't care at all about the level of interpretability, I would use Cross Validation to compare the two potential models (after also using it to identify the optimal values of $\lambda$ to design each model). Cross Validation works by estimating the test error rate by holding aside subsets of the training observations in the fitting process and then applying the model to those saved subsets. The metric to compare is the test MSE.
 
+Consider Ridge vs Lasso as interpretability vs accuracy.
+
 ## Problem 5
 We cannot draw this conclusion, as we do not know where along the ROC curve we want to minimize the number of false positives. Model A could start steeper and level off sooner than Model B, meaning that for early parts of the ROC curve it outperforms Model B. Conversely, Model B could dominate throughout the ROC curve. Therefore, we cannot make a conclusion from the information provided.
 
@@ -107,12 +109,12 @@ for( i in c(1:7)){
 ```{r prob5, echo=T}
 seatbelts2 %>% 
   group_by(state) %>% 
-  summarise(mean_fatalities = mean(fatalities)) %>% 
+  summarise(mean_fatalities = signif(mean(fatalities),3)) %>% 
   slice_max(.,order_by = mean_fatalities,n = 1)
 
 seatbelts2 %>% 
   group_by(state) %>% 
-  summarise(mean_fatalities = mean(fatalities)) %>% 
+  summarise(mean_fatalities = signif(mean(fatalities),3)) %>% 
   slice_min(.,order_by = mean_fatalities,n = 1)
 ```
 
@@ -137,10 +139,6 @@ str_c("Adjusted R^2: ",round(100*seatbelt_lm[["residuals"]][["98"]],2))
 ### Problem 7
 ```{r prob7, echo=T}
 set.seed(222) 
-
-fit <- glmnet(seatbelts3[2:16],seatbelts3$fatalities)
-plot(fit)
-
 cvfit <- cv.glmnet(data.matrix(seatbelts3[2:16]),data.matrix(seatbelts3[1]))
 plot(cvfit)
 
@@ -151,7 +149,7 @@ set.seed(222)
 str_c("Lamda with lowest mean cross-validation error: ",signif(cvfit$lambda.min,digits = 3))
 str_c("Cross-validation error: ",signif(cvfit$cvm[42],digits = 3))
 str_c("Standard error for this Lamda value: ",signif(cvfit$cvsd[42],digits = 3))
-str_c("Largest lamda value within 1se: ",signif(cvfit$lambda.1se,digits = 3))
+str_c("Largest lamda value within 1se: ",formatC((signif(cvfit$lambda.1se,digits = 3)),format = 'e'))
 
 ```
 
@@ -176,7 +174,7 @@ for(k in 1:100){
     columnframe <- rbind(columnframe, mean(as.numeric(as.character(tb$sqerror))))}
     dataframe <- cbind(dataframe, (columnframe))}
 kfold <- as.data.frame(dataframe) %>%
-   mutate(mean = rowMeans(.[2:5]),k=.$`c(1:100)`) %>% select(-c(1:6))
+   mutate(mean = signif(rowMeans(.[2:5]),3),k=.$`c(1:100)`) %>% select(-c(1:6))
 slice_min(kfold,order_by = mean,n = 1)
 ```
 Mean squared error is minimized at `k = 4`.
