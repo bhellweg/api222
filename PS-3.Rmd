@@ -1,0 +1,160 @@
+---
+title: "Problem Set 3"
+subtitle: "API222: Big Data & Machine Learning"
+author: "Brendan Hellweg"
+date: "10/21/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(pls)
+library(fastDummies)
+library(knitr)
+library(FNN)
+library(AER)
+library(magrittr)
+```
+
+## Problem 1
+
+### Problem 1A
+
+PLS: Yes
+
+PCR: Yes
+
+Lasso: Yes
+
+Ridge: Yes
+
+Linear Regression: No
+
+Logistic Regression: No
+
+KNN: No
+
+### Problem 1B
+The purpose of scaling when performing shrinkage methods is to ensure that variables are removed (as in Lasso) or reduced (as in Ridge) depending on their relevance to the model rather than the manner in which data is collected/reported. If, for instance, salaries and age are both in a model, a shrinkage model might otherwise erroneously remove the age because the standard range is somewhere from `30 < x < 70` while the standard range for salaries in a dataset might be `60,000 < x < 90,000`. Shrinkage scales each variable by their variance such that no variable is erroneously removed from the model or excessively reduced due to its manner of reporting. 
+
+### Problem 1C
+The purpose of scaling when performing dimension reduction is because we do not want the variance or values of any particular predictor to exert excess influence on the novel predictors based on how it is reported in the dataset. Dimension reduction produces new components from multiple predictors, so we would not want one to be overweighted or underweighted by how it is reported. It is an arbitrary decision that we define binary variables, for instance, as zero or one. We could just as easily define them as zero and one million. In the latter case, their variance would be excessively influential in the dimension reduction model, and that single variable would overwhelm the other factors. This scaling is important for dimension reduction in particular because it uses the variance of individual predictors as part of the dimension reduction process, and undue influence from one predictor could throw off the whole model.
+
+## Problem 2
+No, for PCR, the first stage is unsupervised, meaning that values of `Y` are not necessarily related to the model design. Instead, the first principle component is found to maximize variance so that it summarizes all variance among `X`'s. In the second stage, PCR finds weights for `Z2` such that it is independent of `Z1`, so each offers new information.
+
+## Problem 3
+Yes, for the first factor loading of this PLS Regression, we would expect PLS to weigh `X2` more highly. The reason for this is that PLS puts more weight on predictors most related to `Y` in the first factor stage. The second component will weigh `X1` more highly.
+
+## Problem 4
+True, although this is not uniformly the case. Because PLS is a supervised model, it will tend to have lower bias compared to PCR. PCR tends to have lower variance and higher bias. The bias/variance trade-off strikes again.
+
+## Problem 5
+Ridge and Lasso will outperform PCR when there are fewer dimensions and a greater sample size, while dimension reduction models like PCR usually perform better in high dimensional datasets, especially when `n<<p`. This is because RSS breaks down when the number of variables exceeds the number of observations without dimension reduction.
+
+## Problem 6
+
+### Problem 6a
+In this case, the data we're working with is quasi-categorical (that is, we know that someone who graduates 12th grade is in a different category of educational attainment as someone who does not), so we expect that there will be a real change in the trendline at that point. As a result, we would use a step function to create a distinct cutoff at this threshold and then use the separate bins to measure changes in outcome and educational attainment without influence from trends in other bins. 
+
+### Problem 6b
+For regression splines, we need degrees of freedom to equal the number of cut points `K` and the number of parameters. So, for a cubic spline, there would be four parameters plus the number of cut points in the dataset.
+
+### Problem 6c
+If the smoothing parameter `lambda = 0`, the function will not smooth at all and it will be very rough. When `lambda` approaches infinity, the function will become increasingly smooth until it is the smoothest shape of all, a straight line.
+
+### Problem 6d
+Natural splines deal with the tricky problem of what to do at the edges of the data range, which is typically more sparse than the middle parts. As a result, polynomial regressions often have a much higher error range and take on weird shapes at the edges because there is less guidance on where to go. For a natural spline, the edges of the range are linear, so it does a better job of approximating the trend-line. 
+
+\newpage
+
+## Data Questions
+
+```{r make_table,include=F}
+data("STAR")
+
+star <- as.data.frame(STAR) %>%
+  select(-c(birth,readk,read1,read2,mathk,math1,math2))
+
+```
+
+### Problem 1
+```{r prob1, echo=T}
+c("There are ", ncol(star)-1," predictors.") %>% 
+str_c(.,collapse = '')
+
+c("There are ", nrow(star)-nrow(star %>% drop_na()),
+  " observations with missing values, totaling ",
+  sum(is.na(star)),
+      " missing values.") %>% 
+str_c(.,collapse = '')
+star %<>% na.omit() 
+star[33:40] <- lapply(star[33:40],as.numeric)
+
+c("There are ", ncol(select_if(star,is.factor))," categorical variables (before we create dummies).") %>% 
+str_c(.,collapse = '')
+
+star%<>%dummy_cols(remove_first_dummy = F)%<>%select_if(.,is.numeric)
+
+c("There are ", ncol(select_if(star,function(col) {var(col)<0.05}))," variables with variance less than 0.05.") %>% 
+str_c(.,collapse = '')
+
+lowvar.rm <- function(df){
+  df[, sapply(df, var) > 0.05]
+}
+star%<>%lowvar.rm()
+```
+```{r prob1a, echo=F}
+set.seed(222) 
+star%<>%sample()
+star_tr <- star %>% head(.,1894) 
+star_te <- star %>% tail(.,nrow(.)-1894) 
+```
+
+### Problem 2
+```{r prob2, echo=T}
+pcr_model <- pcr(star_tr$read3~.,data = star_tr,scale = T,validation = "CV")
+summary(pcr_model)
+validationplot(pcr_model,val.type = "RMSE", log = "y")
+```
+a) RMSE at 0, 10, and 20 components is 36.89, 35.03, and 34.57, respectively.
+
+b) The improvement from 0 to 10 components is relatively small, representing a bit more than a 5% improvement. However, since this is RMSE, the MSE improvement from 0 to 10 components is significantly larger. 
+
+c) The improvement from 10 to 20 components is even smaller, representing about a 1.5% improvement. 
+
+### Problem 3
+```{r prob3, echo=T}
+pcr_test <- predict(pcr_model,star_te,ncomp = 40)
+pcr_rmse <- round(sqrt(mean((pcr_test - star_te$read3)^2)),2)
+pcr_rmse
+```
+a) At roughly 37-38 components we see the lowest RMSE value.
+
+b) The lowest RMSE is 24.95.
+
+c) The test RMSE is 25.84. Not too far off!
+
+### Problem 4
+```{r prob4, echo=F}
+pls_model <- star_tr %>% plsr(read3~.,data = .,scale = T,validation = "CV")
+summary(pls_model)
+validationplot(pls_model, val.type = "RMSE", log = "y")
+pls_test <- predict(pls_model,star_te,ncomp = 16)
+pls_rmse <- round(sqrt(mean((pls_test - star_te$read3)^2)),2)
+pls_rmse
+```
+a) 6 to 7 components produce the best CV RMSE, at `24.93`.
+
+b) The corresponding RMSE is `25.04`.
+
+c) The test RMSE is 25.99 at 16 components. Not too shabby!
+
+### Problem 5
+```{r prob5, echo=T}
+pcr_rmse < pls_rmse
+pcr_rmse
+pls_rmse
+```
+If I were simply looking to produce the model with the lowest RMSE, I would choose the PCR model, as it has a lower RMSE than PLS. However, PLS allows me to use only 6 components at its best level, while the PCR model would require 40 to reach its best performance. If I wanted to use fewer components for computational or modeling reasons, I might sacrifice the marginal performance advantages for the simpler model.

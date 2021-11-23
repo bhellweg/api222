@@ -18,7 +18,7 @@ library(FNN)
 
 ## Problem 1
 
-1	LDA and Logistic regression both have linear decision boundaries and will perform similarly poorly when applied to nonlinear decision boundaries. QDA and KNN both have nonlinear decision boundaries. Depending on the type of nonlinearity of the Bayes Decision Boundary, either QDA or KNN May perform better. KNN will perform better if the assumption of normalcy does not hold, while QDA performs better when the assumption of normalcy holds. 
+LDA and Logistic regression both have linear decision boundaries and will perform similarly poorly when applied to nonlinear decision boundaries. QDA and KNN both have nonlinear decision boundaries. Depending on the type of nonlinearity of the Bayes Decision Boundary, either QDA or KNN May perform better. KNN will perform better if the assumption of normalcy does not hold, while QDA performs better when the assumption of normalcy holds. 
 
 ## Problem 2
 
@@ -53,10 +53,8 @@ While Lasso uses ||$\beta$||1 with the sums of absolute values of $\beta$j, Ridg
 
 If all I care about is the predictive ability and I don't care at all about the level of interpretability, I would use Cross Validation to compare the two potential models (after also using it to identify the optimal values of $\lambda$ to design each model). Cross Validation works by estimating the test error rate by holding aside subsets of the training observations in the fitting process and then applying the model to those saved subsets. The metric to compare is the test MSE.
 
-Consider Ridge vs Lasso as interpretability vs accuracy.
-
 ## Problem 5
-We cannot draw this conclusion, as we do not know where along the ROC curve we want to minimize the number of false positives. Model A could start steeper and level off sooner than Model B, meaning that for early parts of the ROC curve it outperforms Model B. Conversely, Model B could dominate throughout the ROC curve. Therefore, we cannot make a conclusion from the information provided.
+We cannot draw this conclusion, as we do not know where along the ROC curve we want to minimize the number of false positives. Model A could start steeper and level off sooner than Model B, meaning that for early parts of the ROC curve it outperforms Model B. Conversely, Model B could dominate throughout the ROC curve. Therefore, we cannot make a conclusion from the information provided. It's usually a good idea to use AUC to determine which model works better, but there are edge cases such as the example described above.
 
 
 \newpage
@@ -168,16 +166,16 @@ for(i in 1:5){
     columnframe = as.data.frame(c())
 for(k in 1:100){
 #Perform KNN for every value of 0<k<101
-    pr <- knn.reg(test = testData,train = trainData,k = k,y = trainData$fatalities)
+    pr <- knn.reg(test = testData,train = trainData,k = k,y = trainData$seatbelt)
     tb <- as.data.frame(pr$pred) %>% 
-    mutate(pr = pr$pred, scores = testData$fatalities) %>% mutate(sqerror = (.$pr-.$scores)^2) 
+    mutate(pr = pr$pred, scores = testData$seatbelt) %>% mutate(sqerror = (.$pr-.$scores)^2) 
     columnframe <- rbind(columnframe, mean(as.numeric(as.character(tb$sqerror))))}
     dataframe <- cbind(dataframe, (columnframe))}
 kfold <- as.data.frame(dataframe) %>%
    mutate(mean = signif(rowMeans(.[2:5]),3),k=.$`c(1:100)`) %>% select(-c(1:6))
 slice_min(kfold,order_by = mean,n = 1)
 ```
-Mean squared error is minimized at `k = 4`.
+Mean squared error is minimized at the above `k` value. Note that this will be randomized so the result will change each time it is run.
 
 ### Problem 9
 ```{r prob9, echo=T}
@@ -186,3 +184,4 @@ plot(x = kfold$k,y = kfold$mean,
      sub = "Produced for API-222",
      xlab = 'k',ylab = "Mean CV MSE") 
 ```
+
